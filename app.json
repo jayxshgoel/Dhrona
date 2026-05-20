@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Dhrona",
+    "slug": "dhrona",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1B2A4A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.aivenue.dhrona"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1B2A4A"
+      },
+      "package": "com.aivenue.dhrona"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "scheme": "dhrona"
+  }
+}

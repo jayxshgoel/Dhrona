@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "Bash(findstr \"\\\\\"expo\\\\\"\")",
+      "Bash(node -e \"const m = require\\('./node_modules/metro/package.json'\\); console.log\\(m.version\\)\")",
+      "Bash(node -e \"const m = require\\('./node_modules/metro/package.json'\\); console.log\\(JSON.stringify\\(m.exports, null, 2\\)\\)\")",
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/expo/package.json'\\).version\\)\")",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\(p.dependencies['react-native-reanimated'] || p.devDependencies['react-native-reanimated'] || 'not found'\\)\")",
+      "Bash(curl -s http://localhost:8081/status)",
+      "Bash(gh auth *)",
+      "PowerShell(gh auth status 2>&1)"
+    ]
+  }
+}
