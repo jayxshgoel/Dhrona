@@ -39,8 +39,13 @@ export default function OtpScreen() {
   async function handleVerify() {
     const code = otp.join('');
     if (code.length !== OTP_LENGTH) return;
-    await verifyOtp(code);
-    router.push('/role');
+    try {
+      await verifyOtp(code);
+      router.push('/role');
+    } catch (e: any) {
+      setOtp(Array(OTP_LENGTH).fill(''));
+      inputs.current[0]?.focus();
+    }
   }
 
   const full = otp.every((d) => d !== '');
@@ -105,9 +110,6 @@ export default function OtpScreen() {
 
           <Button label="Verify & Continue" onPress={handleVerify} fullWidth size="lg" loading={isLoading} disabled={!full} />
 
-          <Text style={{ textAlign: 'center', fontFamily: 'PlusJakartaSans_400Regular', fontSize: 12, color: '#8899BB', marginTop: 20 }}>
-            Demo: any 6-digit code works
-          </Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

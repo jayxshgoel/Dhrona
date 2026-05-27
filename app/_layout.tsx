@@ -18,11 +18,17 @@ import {
 import { useAuthStore } from '@/store/authStore';
 
 function AuthGate() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isLoading, loadSession } = useAuthStore();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
+    loadSession();
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+
     const inRoleArea =
       segments[0] === '(teacher)' ||
       segments[0] === '(student)' ||
@@ -33,7 +39,7 @@ function AuthGate() {
     } else if (!isAuthenticated && inRoleArea) {
       router.replace('/');
     }
-  }, [isAuthenticated, user, segments]);
+  }, [isAuthenticated, user, segments, isLoading]);
 
   return null;
 }

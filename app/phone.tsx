@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 
 export default function PhoneScreen() {
   const router = useRouter();
-  const { setPhone } = useAuthStore();
+  const { setPhone, sendOtp, isLoading } = useAuthStore();
   const [phone, setPhoneValue] = useState('');
   const [error, setError] = useState('');
 
@@ -23,10 +23,16 @@ export default function PhoneScreen() {
     return true;
   }
 
-  function handleContinue() {
+  async function handleContinue() {
     if (!validate()) return;
-    setPhone('+91' + phone);
-    router.push('/otp');
+    const fullPhone = '+91' + phone;
+    setPhone(fullPhone);
+    try {
+      await sendOtp(fullPhone);
+      router.push('/otp');
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to send OTP. Try again.');
+    }
   }
 
   return (
@@ -72,7 +78,7 @@ export default function PhoneScreen() {
             </Text>
 
             <View style={{ marginTop: 28 }}>
-              <Button label="Send OTP" onPress={handleContinue} fullWidth size="lg" disabled={phone.length !== 10} />
+              <Button label="Send OTP" onPress={handleContinue} fullWidth size="lg" disabled={phone.length !== 10} loading={isLoading} />
             </View>
 
             {/* Divider */}
