@@ -5,8 +5,8 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  TextInput,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { UsageCounter } from '@/components/ui/UsageCounter';
+import { PaywallModal } from '@/components/ui/PaywallModal';
 import {
   EXAM_TYPES,
   SUBJECTS_BY_EXAM,
@@ -26,8 +28,15 @@ import {
 import { DIFFICULTY_COLORS, SUBJECT_COLORS } from '@/constants/theme';
 import { generateQuestions, saveQuestionsToBank } from '@/services/questionService';
 import { Question, ExamType, Subject, Difficulty, QuestionType } from '@/types';
+import { useAuthStore } from '@/store/authStore';
+import { useUsageStore } from '@/store/usageStore';
 
 export default function GenerateScreen() {
+  const router = useRouter();
+  const { user } = useAuthStore();
+  const { generateCount, incrementGenerate, isGenerateLimitReached } = useUsageStore();
+  const isPremium = user?.tier !== 'free';
+
   const [examType, setExamType] = useState<ExamType | ''>('');
   const [subject, setSubject] = useState<Subject | ''>('');
   const [chapter, setChapter] = useState('');
@@ -39,14 +48,20 @@ export default function GenerateScreen() {
   const [accepted, setAccepted] = useState<Set<string>>(new Set());
   const [saved, setSaved] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   const availableSubjects = examType ? SUBJECTS_BY_EXAM[examType as ExamType] : [];
   const availableChapters = subject ? CHAPTERS[subject as Subject] : [];
 
   const canGenerate = examType && subject && chapter && difficulty && qType;
+  const limitBlocked = !isPremium && isGenerateLimitReached();
 
   async function handleGenerate() {
     if (!canGenerate) return;
+    if (limitBlocked) {
+      setPaywallVisible(true);
+      return;
+    }
     setLoading(true);
     setGenerated([]);
     setSaved(false);
@@ -62,6 +77,7 @@ export default function GenerateScreen() {
       });
       setGenerated(qs);
       setAccepted(new Set(qs.map((q) => q.id)));
+      if (!isPremium) incrementGenerate();
     } catch {
       Alert.alert('Error', 'Failed to generate questions. Please try again.');
     } finally {
@@ -87,6 +103,17 @@ export default function GenerateScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        onUpgrade={() => {
+          setPaywallVisible(false);
+          router.push('/settings' as any);
+        }}
+        feature="AI Question Generator"
+        limitMessage="You've used all your free generations for today. Upgrade to Premium for unlimited AI question generation."
+      />
+
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Header */}
         <LinearGradient colors={['#07090F', '#141E45']} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}>
@@ -94,6 +121,14 @@ export default function GenerateScreen() {
           <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, color: '#8899BB', marginTop: 6 }}>
             Generate exam-quality questions instantly
           </Text>
+          {!isPremium && (
+            <UsageCounter
+              used={generateCount}
+              limit={5}
+              period="today"
+              onUpgrade={() => setPaywallVisible(true)}
+            />
+          )}
         </LinearGradient>
 
         <View className="px-5 pt-5 gap-0">
@@ -161,12 +196,12 @@ export default function GenerateScreen() {
           </Card>
 
           <Button
-            label="Generate Questions"
+            label={limitBlocked ? 'Daily limit reached' : 'Generate Questions'}
             onPress={handleGenerate}
             fullWidth
             size="lg"
             disabled={!canGenerate}
-            icon={<Ionicons name="sparkles" size={18} color="#fff" />}
+            icon={<Ionicons name={limitBlocked ? 'lock-closed' : 'sparkles'} size={18} color="#fff" />}
           />
         </View>
 

@@ -5,9 +5,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Modal,
-  Pressable,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,7 +15,10 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { UsageCounter } from '@/components/ui/UsageCounter';
+import { PaywallModal } from '@/components/ui/PaywallModal';
 import { useAuthStore } from '@/store/authStore';
+import { useUsageStore } from '@/store/usageStore';
 import { generateQuestions } from '@/services/questionService';
 import {
   EXAM_TYPES,
@@ -31,7 +33,9 @@ import { DIFFICULTY_COLORS } from '@/constants/theme';
 import { ExamType, Subject, Difficulty, QuestionType, Question } from '@/types';
 
 export default function PracticeScreen() {
+  const router = useRouter();
   const { user } = useAuthStore();
+  const { practiceCount, incrementPractice, isPracticeLimitReached } = useUsageStore();
   const isPremium = user?.tier !== 'free';
 
   const [examType, setExamType] = useState<ExamType | ''>('');
@@ -40,6 +44,7 @@ export default function PracticeScreen() {
   const [difficulty, setDifficulty] = useState<Difficulty | ''>('');
   const [count, setCount] = useState(10);
   const [loading, setLoading] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   // Practice session state
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -51,9 +56,14 @@ export default function PracticeScreen() {
   const availableSubjects = examType ? SUBJECTS_BY_EXAM[examType as ExamType] : [];
   const availableChapters = subject ? CHAPTERS[subject as Subject] : [];
   const canStart = examType && subject && chapter && difficulty;
+  const limitBlocked = !isPremium && isPracticeLimitReached();
 
   async function handleStart() {
     if (!canStart) return;
+    if (limitBlocked) {
+      setPaywallVisible(true);
+      return;
+    }
     setLoading(true);
     try {
       const qs = await generateQuestions({
@@ -69,6 +79,7 @@ export default function PracticeScreen() {
       setAnswers({});
       setSubmitted(false);
       setShowResult(false);
+      if (!isPremium) incrementPractice();
     } catch {
       Alert.alert('Error', 'Could not generate questions. Please try again.');
     } finally {
@@ -102,18 +113,29 @@ export default function PracticeScreen() {
   if (questions.length === 0) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FF' }}>
+        <PaywallModal
+          visible={paywallVisible}
+          onClose={() => setPaywallVisible(false)}
+          onUpgrade={() => {
+            setPaywallVisible(false);
+            router.push('/settings' as any);
+          }}
+          feature="Self Practice"
+          limitMessage={`You've used ${FREE_TIER_LIMITS.weeklyPracticeTests} free practice sessions this week. Upgrade to Premium for unlimited practice.`}
+        />
+
         <LinearGradient colors={['#07090F', '#141E45']} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}>
           <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 24, color: '#fff', letterSpacing: -0.5 }}>Self Practice</Text>
           <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, color: '#8899BB', marginTop: 6 }}>
             Generate questions tailored to you
           </Text>
           {!isPremium && (
-            <View style={{ marginTop: 12, backgroundColor: 'rgba(251,191,36,0.15)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="warning-outline" size={15} color="#FBBF24" />
-              <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 12, color: '#FBBF24', flex: 1 }}>
-                Free plan: up to {FREE_TIER_LIMITS.dailyGenerations} questions/day. Upgrade for unlimited.
-              </Text>
-            </View>
+            <UsageCounter
+              used={practiceCount}
+              limit={FREE_TIER_LIMITS.weeklyPracticeTests}
+              period="this week"
+              onUpgrade={() => setPaywallVisible(true)}
+            />
           )}
         </LinearGradient>
 
@@ -160,7 +182,14 @@ export default function PracticeScreen() {
             {loading ? (
               <LoadingSpinner message="Generating questions with AI..." />
             ) : (
-              <Button label="Start Practice" onPress={handleStart} fullWidth size="lg" disabled={!canStart} icon={<Ionicons name="sparkles" size={18} color="#fff" />} />
+              <Button
+                label={limitBlocked ? 'Weekly limit reached' : 'Start Practice'}
+                onPress={handleStart}
+                fullWidth
+                size="lg"
+                disabled={!canStart}
+                icon={<Ionicons name={limitBlocked ? 'lock-closed' : 'sparkles'} size={18} color="#fff" />}
+              />
             )}
           </View>
         </ScrollView>

@@ -26,6 +26,7 @@ export default function ParentLayout() {
         options={{ title: 'Subscription', tabBarIcon: ({ color, size }) => <Ionicons name="diamond" size={size} color={color} /> }}
       />
       <Tabs.Screen name="child" options={{ href: null }} />
+      <Tabs.Screen name="link-child" options={{ href: null }} />
     </Tabs>
   );
 }

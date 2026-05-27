@@ -44,8 +44,11 @@ export default function StudentDashboard() {
               {(user as any)?.examType ?? 'JEE Mains'}
             </Text>
           </View>
-          <TouchableOpacity style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(123,92,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="notifications-outline" size={20} color="#7B5CFF" />
+          <TouchableOpacity
+            onPress={() => router.push('/settings' as any)}
+            style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(123,92,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="person-circle-outline" size={22} color="#7B5CFF" />
           </TouchableOpacity>
         </View>
 

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
+import { openRazorpayCheckout, PlanId } from '@/services/paymentService';
 
 const PLANS = [
   {
@@ -56,20 +57,38 @@ const PLANS = [
 ];
 
 export default function SubscriptionScreen() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const [selected, setSelected] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
   const currentTier = user?.tier ?? 'free';
 
-  function handleUpgrade() {
-    if (!selected || selected === 'free') return;
-    Alert.alert(
-      'Upgrade to Premium',
-      'This will redirect to Razorpay for payment. In demo mode, payment is simulated.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Pay Now', onPress: () => Alert.alert('Payment Successful!', 'Welcome to Dhrona Premium! 🎉') },
-      ],
-    );
+  async function handleUpgrade() {
+    if (!selected || selected === 'free' || paying) return;
+    setPaying(true);
+    try {
+      const result = await openRazorpayCheckout(
+        selected as PlanId,
+        user?.phone ?? '',
+        user?.name ?? '',
+      );
+      router.replace({
+        pathname: '/payment-success' as any,
+        params: { planId: selected, paymentId: result.razorpay_payment_id },
+      });
+    } catch (err: any) {
+      const code = String(err?.code ?? '');
+      const description = err?.description as string | undefined;
+      // code 0 = user cancelled — navigate to failure screen only for real errors
+      if (code !== '0') {
+        router.push({
+          pathname: '/payment-failure' as any,
+          params: { code, description },
+        });
+      }
+    } finally {
+      setPaying(false);
+    }
   }
 
   return (
@@ -158,9 +177,30 @@ export default function SubscriptionScreen() {
 
         {selected && selected !== 'free' && (
           <View style={{ marginTop: 24 }}>
-            <Button label="Upgrade Now →" onPress={handleUpgrade} fullWidth size="lg" />
+            <TouchableOpacity
+              onPress={handleUpgrade}
+              disabled={paying}
+              activeOpacity={0.85}
+              style={{ borderRadius: 16, overflow: 'hidden', opacity: paying ? 0.7 : 1 }}
+            >
+              <LinearGradient
+                colors={['#7B5CFF', '#4F8FFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ paddingVertical: 17, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}
+              >
+                {paying ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="lock-closed" size={16} color="#fff" />
+                )}
+                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: '#fff', letterSpacing: -0.2 }}>
+                  {paying ? 'Opening payment...' : 'Upgrade Now →'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
             <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 11, color: '#8899BB', textAlign: 'center', marginTop: 12 }}>
-              Secure payment via Razorpay. Cancel anytime.
+              Secure payment via Razorpay · Cancel anytime
             </Text>
           </View>
         )}
